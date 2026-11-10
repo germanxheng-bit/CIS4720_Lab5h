@@ -339,6 +339,9 @@ SELECT v_students;
 -- =================================================================
 -- STEP 6. An OUT parameter, count_scores
 --
+-- =================================================================
+
+-- your comment goes here
 -- counts one student's scores and hands the number back
 CREATE PROCEDURE count_scores(IN p_student_id INT, OUT p_count INT)
 BEGIN
@@ -359,11 +362,6 @@ SELECT @n;
 
 CALL count_scores(3, 5);
 
--- =================================================================
-
--- your comment goes here
--- your statements go here
-
 
 -- =================================================================
 -- STEP 7. When a local variable is too small
@@ -372,9 +370,37 @@ CALL count_scores(3, 5);
 -- =================================================================
 
 -- your comment goes here
--- your statements go here
+INSERT INTO students (first_name, last_name) VALUES ('Ana', 'Lopez');
 
+--
+CALL add_score('quiz1', 7, 100);
 
+--
+DROP FUNCTION IF EXISTS calculate_gpa;
+CREATE FUNCTION calculate_gpa(p_student_id INT)
+RETURNS DECIMAL(5,2)
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_gpa DECIMAL(5,2);
+
+    SELECT ROUND(AVG(score), 2)
+    INTO v_gpa
+    FROM test_scores
+    WHERE student_id = p_student_id
+      AND score IS NOT NULL;
+
+    RETURN IFNULL(v_gpa, 0.00);
+END;
+
+--
+ALTER TABLE students MODIFY gpa DECIMAL(5,2);
+
+--
+UPDATE students SET gpa = calculate_gpa(7) WHERE student_id = 7;
+
+--
+CALL list_students();
 -- =================================================================
 -- STEP 8. IF, ELSEIF and ELSE, student_standing
 --
@@ -382,9 +408,35 @@ CALL count_scores(3, 5);
 -- =================================================================
 
 -- your comment goes here
--- your statements go here
+-- reports a student's standing as a word, through an OUT parameter
+CREATE PROCEDURE student_standing(IN p_student_id INT,
+OUT p_standing VARCHAR(20))
+BEGIN
+-- the gpa goes here once we have looked it up
+DECLARE v_gpa DECIMAL(5,2);
+-- look it up. no matching student leaves v_gpa NULL
+SELECT gpa
+INTO v_gpa
+FROM students
+WHERE student_id = p_student_id;
+-- choose the label
+IF v_gpa IS NULL THEN
+    SET p_standing = 'No such student';
+ELSEIF v_gpa >= 90 THEN
+    SET p_standing = 'Honors';
+ELSEIF v_gpa >= 85 THEN
+    SET p_standing = 'Good standing';
+ELSE 
+    SET p_standing = 'Needs support';
+END IF;
+END;
 
-
+-- Test student_standing with a few students, including one that does not exist.
+CALL student_standing(7, @standing); SELECT @standing;
+CALL student_standing(3, @standing); SELECT @standing;
+CALL student_standing(1, @standing); SELECT @standing; 
+CALL student_standing(4, @standing); SELECT @standing;
+CALL student_standing(9, @standing); SELECT @standing;
 -- =================================================================
 -- STEP 9. Rebuild add_score so it checks the score
 --
