@@ -437,6 +437,8 @@ CALL student_standing(3, @standing); SELECT @standing;
 CALL student_standing(1, @standing); SELECT @standing; 
 CALL student_standing(4, @standing); SELECT @standing;
 CALL student_standing(9, @standing); SELECT @standing;
+
+
 -- =================================================================
 -- STEP 9. Rebuild add_score so it checks the score
 --
