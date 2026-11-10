@@ -279,7 +279,18 @@ SELECT * FROM attendance;
 -- =================================================================
 
 -- your comment goes here
--- your statements go here
+-- make a session variable and look at it
+SET @passing = 80;
+SELECT @passing;
+-- use it in a query, anywhere a value could go
+SELECT student_name, test_name, score
+FROM student_scores
+WHERE score < @passing;
+-- a variable nobody ever set
+SELECT @never_set;
+-- put the answer to a query straight into a variable
+SELECT COUNT(*) INTO @how_many FROM students;
+SELECT @how_many;
 
 
 -- =================================================================
@@ -287,8 +298,14 @@ SELECT * FROM attendance;
 -- =================================================================
 
 -- your comment goes here
--- your statements go here
+SELECT MAX(score) INTO @top FROM test_scores WHERE test_name = 'quiz3';
+SELECT @top;
 
+SET @test = 'quiz3';
+CALL scores_for_test(@test);
+
+SET @who = 3;
+CALL student_report(@who);
 
 -- =================================================================
 -- STEP 5. Local variables, class_stats
@@ -297,13 +314,51 @@ SELECT * FROM attendance;
 -- =================================================================
 
 -- your comment goes here
--- your statements go here
+-- three numbers about the whole class, worked out one at a time
+CREATE PROCEDURE class_stats()
+BEGIN
+-- DECLARE makes a local variable: a name, a type, and a starting value
+DECLARE v_students INT DEFAULT 0;
+DECLARE v_scores INT DEFAULT 0;
+DECLARE v_average DECIMAL(5,2);
+-- fill the first one
+SELECT COUNT(*) INTO v_students FROM students;
+-- one SELECT can fill two variables, in the same order
+SELECT COUNT(*), ROUND(AVG(score), 2)
+INTO v_scores, v_average
+FROM test_scores;
+-- show all three as one row
+SELECT v_students AS students, v_scores AS scores, v_average AS class_average;
+END
+
+CALL class_stats();
+SELECT v_students;
+-- ERROR 1054: Unknown column 'v_students' in 'field list'
 
 
 -- =================================================================
 -- STEP 6. An OUT parameter, count_scores
 --
--- Copy the skeleton and write the SELECT ... INTO.
+-- counts one student's scores and hands the number back
+CREATE PROCEDURE count_scores(IN p_student_id INT, OUT p_count INT)
+BEGIN
+-- count this student's rows and put the answer in p_count
+SELECT COUNT(*) INTO p_count
+FROM test_scores
+WHERE student_id = p_student_id;
+END
+
+CALL count_scores(3, @n);
+SELECT @n;
+
+CALL count_scores(5, @n);
+SELECT @n;
+
+CALL count_scores(9, @n);
+SELECT @n;
+
+CALL count_scores(3, 5);
+
 -- =================================================================
 
 -- your comment goes here
