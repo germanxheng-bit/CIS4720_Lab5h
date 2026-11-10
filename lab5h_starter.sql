@@ -278,7 +278,6 @@ SELECT * FROM attendance;
 -- Copy these from the handout and run them.
 -- =================================================================
 
--- your comment goes here
 -- make a session variable and look at it
 SET @passing = 80;
 SELECT @passing;
@@ -297,13 +296,15 @@ SELECT @how_many;
 -- STEP 4. Session variables on your own
 -- =================================================================
 
--- your comment goes here
+-- put the highest score on quiz3 into a session variable and look at it
 SELECT MAX(score) INTO @top FROM test_scores WHERE test_name = 'quiz3';
 SELECT @top;
 
+-- set a session variable to a test name and call the procedure that uses it
 SET @test = 'quiz3';
 CALL scores_for_test(@test);
 
+-- set a session variable to a student_id and call the procedure that uses it
 SET @who = 3;
 CALL student_report(@who);
 
@@ -313,7 +314,7 @@ CALL student_report(@who);
 -- Copy this one from the handout. Then try the SELECT that fails.
 -- =================================================================
 
--- your comment goes here
+-- builds a procedure that counts students, scores, and averages the scores
 -- three numbers about the whole class, worked out one at a time
 CREATE PROCEDURE class_stats()
 BEGIN
@@ -341,7 +342,7 @@ SELECT v_students;
 --
 -- =================================================================
 
--- your comment goes here
+-- builds a procedure that counts how many scores a student has and hands the number back
 -- counts one student's scores and hands the number back
 CREATE PROCEDURE count_scores(IN p_student_id INT, OUT p_count INT)
 BEGIN
@@ -351,6 +352,7 @@ FROM test_scores
 WHERE student_id = p_student_id;
 END
 
+-- test it with a few students, including one that does not exist. 
 CALL count_scores(3, @n);
 SELECT @n;
 
@@ -369,13 +371,13 @@ CALL count_scores(3, 5);
 -- Most of this step is yours. Put each error number in a comment.
 -- =================================================================
 
--- your comment goes here
+-- add ana lopez, who will be student 7. Her gpa will be NULL until she has a score.
 INSERT INTO students (first_name, last_name) VALUES ('Ana', 'Lopez');
 
---
-CALL add_score('quiz1', 7, 100);
+-- give Ana a perfect score on quiz1. It will fail because the student_id is too small.
+-- CALL add_score('quiz1', 7, 100);
 
---
+-- drop the old function and make a new one with a bigger return type
 DROP FUNCTION IF EXISTS calculate_gpa;
 CREATE FUNCTION calculate_gpa(p_student_id INT)
 RETURNS DECIMAL(5,2)
@@ -393,13 +395,13 @@ BEGIN
     RETURN IFNULL(v_gpa, 0.00);
 END;
 
---
+-- update the students table to use the new function and a bigger gpa column
 ALTER TABLE students MODIFY gpa DECIMAL(5,2);
 
---
+-- calculate ana's gpa and put it in the table. It should be 100.00.
 UPDATE students SET gpa = calculate_gpa(7) WHERE student_id = 7;
 
---
+-- verify that the new student is in the list, with a gpa of 100.00
 CALL list_students();
 -- =================================================================
 -- STEP 8. IF, ELSEIF and ELSE, student_standing
@@ -407,7 +409,7 @@ CALL list_students();
 -- Copy the skeleton and write the IF block.
 -- =================================================================
 
--- your comment goes here
+-- builds a procedure that looks up a student's gpa and reports it as a status
 -- reports a student's standing as a word, through an OUT parameter
 CREATE PROCEDURE student_standing(IN p_student_id INT,
 OUT p_standing VARCHAR(20))
@@ -445,20 +447,61 @@ CALL student_standing(9, @standing); SELECT @standing;
 -- Write the DROP. Copy the skeleton and fill the two gaps.
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- build the procedure to add a score, but only if it is a real score
+-- adds a score only when it is a real score
+CREATE PROCEDURE add_score(IN p_test_name VARCHAR(20),
+IN p_student_id INT,
+IN p_score FLOAT)
+BEGIN
+-- >>>>> GAP 1: THE CONDITION FOR A BAD SCORE <<<<<
+IF p_score < 0 OR p_score > 100
+THEN
+-- refuse, and say why
+SELECT 'Score must be between 0 and 100' AS message;
+ELSE
+-- >>>>> GAP 2: THE INSERT AND THE UPDATE FROM LAB 5G <<<<<
+INSERT INTO test_scores (test_name, student_id, score)
+VALUES (p_test_name, p_student_id, p_score);
+UPDATE students SET gpa = calculate_gpa(p_student_id)
+WHERE student_id = p_student_id;
+END IF;
+END
 
-
+-- Test add_score with a few scores, including one that is too high and one that is too low
+CALL add_score('quiz5', 4, -20);
+CALL add_score('quiz5', 4, 120);
+CALL add_score('quiz5', 2, 91);
 -- =================================================================
 -- STEP 10. Rebuild record_attendance so it checks the student
 --
 -- Yours from start to finish. The handout walks you through it.
 -- =================================================================
 
--- your comment goes here
--- your statements go here
+-- build the procedure to check for a student before recording attendance
+CREATE PROCEDURE record_attendance(IN p_student_id INT, IN p_status VARCHAR(20))
+BEGIN
+    DECLARE v_found INT DEFAULT 0;
 
+-- check if student is in database
+    SELECT COUNT(*) INTO v_found
+    FROM students
+    WHERE student_id = p_student_id;
 
+-- reject if not found, otherwise insert
+    IF v_found = 0 THEN
+        SELECT 'No such student' AS message;
+    ELSE
+        INSERT INTO attendance (student_id, attended_on, status) 
+        VALUES (p_student_id, CURDATE(), p_status);
+    END IF;
+END;
+
+-- test record_attendance with a few students, including one that does not exist
+CALL record_attendance(9, 'PRESENT');
+CALL record_attendance(3, 'LATE');
+
+-- check the attendance table to see if the second call worked
+SELECT * FROM attendance
 -- =================================================================
 -- STEP 11 and 12. Push to GitHub and submit the URL
 --
